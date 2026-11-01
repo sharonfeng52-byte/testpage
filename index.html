@@ -142,6 +142,27 @@ details p{color:var(--ink-soft); margin:12px 0 2px; font-size:14.5px; max-width:
 .btn-primary{background:var(--coral); color:#fff;}
 .btn-ghost{border-color:var(--navy); color:var(--navy);}
 
+
+/* ---------- Registration form ---------- */
+.reg-form{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:28px;}
+.reg-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px;}
+.reg-form label{display:block; font-size:13.5px; font-weight:700; margin-bottom:6px;}
+.reg-form label i{color:var(--coral); font-style:normal;}
+.reg-form input, .reg-form select, .reg-form textarea{
+  width:100%; font-family:inherit; font-size:14.5px; color:var(--ink); background:var(--bg-soft);
+  border:1px solid var(--line); border-radius:10px; padding:11px 13px;
+}
+.reg-form textarea{min-height:80px; resize:vertical;}
+.reg-full{grid-column:1/-1;}
+.reg-hp{position:absolute; left:-9999px; opacity:0; height:0; overflow:hidden;}
+.reg-actions{display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-top:20px;}
+.reg-actions button{background:var(--coral); color:#fff; border:none; border-radius:999px; padding:13px 30px; font-weight:700; font-size:15px; cursor:pointer; font-family:inherit;}
+.reg-actions button:disabled{opacity:.55; cursor:not-allowed;}
+#regStatus{font-size:14px; color:var(--ink-soft);}
+#regStatus.ok{color:var(--teal); font-weight:700;}
+#regStatus.err{color:var(--coral); font-weight:700;}
+.reg-privacy{font-size:12.5px; color:var(--ink-soft); margin-top:14px;}
+
 footer{padding:30px 0 calc(30px + env(safe-area-inset-bottom,0px)); text-align:center; color:var(--ink-soft); font-size:13px;}
 
 /* ---------- Chat widget ---------- */
@@ -369,6 +390,32 @@ footer{padding:30px 0 calc(30px + env(safe-area-inset-bottom,0px)); text-align:c
       </div>
     </div>
   </section>
+
+  <section class="reg-section" id="register">
+    <div class="wrap">
+      <div class="kicker">立即報名</div>
+      <h2>填寫報名表，我哋會盡快聯絡你</h2>
+      <p class="lede">遞交後資料會直接傳送畀導師，我哋會以 WhatsApp 或電郵回覆班期同地點。</p>
+      <div class="reg-form">
+        <div class="reg-grid" id="regFields">
+          <div><label for="rParent">家長姓名 <i>*</i></label><input id="rParent" maxlength="40" autocomplete="name"></div>
+          <div><label for="rStudent">學生姓名 <i>*</i></label><input id="rStudent" maxlength="40"></div>
+          <div><label for="rGrade">就讀年級 <i>*</i></label>
+            <select id="rGrade"><option value="">請選擇</option><option>小五</option><option>小六</option><option>其他</option></select></div>
+          <div><label for="rAge">學生年齡</label><input id="rAge" type="number" min="6" max="16" inputmode="numeric"></div>
+          <div><label for="rPhone">聯絡電話（WhatsApp）<i>*</i></label><input id="rPhone" type="tel" maxlength="20" autocomplete="tel" inputmode="tel"></div>
+          <div><label for="rEmail">電郵</label><input id="rEmail" type="email" maxlength="80" autocomplete="email"></div>
+          <div class="reg-full"><label for="rNote">備註／想了解嘅事項</label><textarea id="rNote" maxlength="500"></textarea></div>
+          <div class="reg-hp" aria-hidden="true"><label>網址<input id="rWebsite" tabindex="-1" autocomplete="off"></label></div>
+        </div>
+        <div class="reg-actions">
+          <button id="regSubmit" type="button">遞交報名</button>
+          <span id="regStatus" role="status"></span>
+        </div>
+        <p class="reg-privacy">你提供嘅資料只會用作課程報名聯絡，唔會公開或用於其他用途。</p>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>同一張鈔票，不同世界 · 兒童財商系列課程 · 認可兒童財商培訓師課程系列</footer>
@@ -420,6 +467,38 @@ qa.forEach(([q]) => {
     const msg = '【課程留言】' + who + '：' + text;
     window.open('https://wa.me/85260517752?text=' + encodeURIComponent(msg), '_blank', 'noopener');
     statusEl.textContent = '已開啟 WhatsApp，按「傳送」即可送出留言';
+  });
+})();
+
+
+// ===== 報名表：貼上你部署 Google Apps Script 後得到嘅 Web App URL =====
+const REG_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxK02ijUo39YWNTKAF1nDVGou7Za9nPi2NiSZnaFEZ-rXFqyRmXuBRZChU66TbEUuDCvQ/exec';
+(() => {
+  const $ = id => document.getElementById(id);
+  const btn = $('regSubmit'), st = $('regStatus');
+  const say = (t, c) => { st.textContent = t; st.className = c || ''; };
+  btn.addEventListener('click', async () => {
+    if ($('rWebsite').value) return; // honeypot
+    const data = {
+      parent: $('rParent').value.trim(), student: $('rStudent').value.trim(),
+      grade: $('rGrade').value, age: $('rAge').value.trim(),
+      phone: $('rPhone').value.trim(), email: $('rEmail').value.trim(),
+      note: $('rNote').value.trim(), page: location.href
+    };
+    if (!data.parent || !data.student || !data.grade || !data.phone) { say('請填寫所有標示 * 嘅必填欄位', 'err'); return; }
+    if (!/^[0-9+\-\s()]{7,20}$/.test(data.phone)) { say('電話格式似乎有誤，請再檢查', 'err'); return; }
+    if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) { say('電郵格式似乎有誤', 'err'); return; }
+    if (REG_ENDPOINT.indexOf('PASTE_') === 0) { say('報名系統尚未啟用，請先用 WhatsApp 或電郵報名', 'err'); return; }
+    btn.disabled = true; say('遞交緊……');
+    try {
+      await fetch(REG_ENDPOINT, { method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(data) });
+      say('報名成功！多謝你，我哋會盡快聯絡你。', 'ok');
+      ['rParent','rStudent','rGrade','rAge','rPhone','rEmail','rNote'].forEach(i => $(i).value = '');
+    } catch (e) {
+      say('遞交失敗，請稍後再試，或直接 WhatsApp 報名', 'err');
+    }
+    btn.disabled = false;
   });
 })();
 
