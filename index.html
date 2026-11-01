@@ -491,12 +491,17 @@ const REG_ENDPOINT = 'https://script.google.com/macros/s/AKfycbzpVqs5XEmQNUw0XGg
     if (REG_ENDPOINT.indexOf('PASTE_') === 0) { say('報名系統尚未啟用，請先用 WhatsApp 或電郵報名', 'err'); return; }
     btn.disabled = true; say('遞交緊……');
     try {
-      await fetch(REG_ENDPOINT, { method: 'POST', mode: 'no-cors',
+      const r = await fetch(REG_ENDPOINT, { method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(data) });
-      say('報名成功！多謝你，我哋會盡快聯絡你。', 'ok');
-      ['rParent','rStudent','rGrade','rAge','rPhone','rEmail','rNote'].forEach(i => $(i).value = '');
+      const j = await r.json();
+      if (j && j.ok) {
+        say('報名成功！多謝你，我哋會盡快聯絡你。', 'ok');
+        ['rParent','rStudent','rGrade','rAge','rPhone','rEmail','rNote'].forEach(i => $(i).value = '');
+      } else {
+        say('系統未能儲存報名（' + ((j && j.error) || '未知錯誤') + '），請直接 WhatsApp 報名', 'err');
+      }
     } catch (e) {
-      say('遞交失敗，請稍後再試，或直接 WhatsApp 報名', 'err');
+      say('未能連接報名系統，請檢查網絡或直接 WhatsApp 報名', 'err');
     }
     btn.disabled = false;
   });

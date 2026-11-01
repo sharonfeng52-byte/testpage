@@ -37,3 +37,12 @@ function doPost(e) {
 function doGet() {
   return ContentService.createTextOutput('報名系統運作中');
 }
+
+// 在編輯器手動執行一次，用來授權及測試寫入（成功後 Sheet 會多一行「測試」）
+function testWrite() {
+  const r = doPost({ postData: { contents: JSON.stringify({
+    parent: '測試家長', student: '測試學生', grade: '小五', age: '11',
+    phone: '60000000', email: 'test@example.com', note: 'testWrite', page: 'editor'
+  }) } });
+  Logger.log(r.getContent());
+}
