@@ -169,6 +169,10 @@ footer{padding:30px 0 calc(30px + env(safe-area-inset-bottom,0px)); text-align:c
   padding:9px 12px; font-size:13px; cursor:pointer; font-family:inherit;
 }
 .quick button:hover{border-color:var(--navy);}
+.chat-wa{
+  display:flex; align-items:center; justify-content:center; gap:8px; margin:0 16px 14px; padding:11px;
+  background:#25D366; color:#fff; border-radius:10px; text-decoration:none; font-weight:700; font-size:13.5px;
+}
 </style>
 </head>
 <body>
@@ -335,7 +339,7 @@ footer{padding:30px 0 calc(30px + env(safe-area-inset-bottom,0px)); text-align:c
     <div class="wrap">
       <div class="kicker">同學提問牆</div>
       <h2>有咩想問，或者想同導師講？</h2>
-      <p class="board-note">你留低嘅問題會直接send畀導師（只有導師睇得到），用嚟調整之後嘅課堂內容。</p>
+      <p class="board-note">你留低嘅問題會經 WhatsApp 直接send畀導師，用嚟調整之後嘅課堂內容。</p>
       <div class="board-form">
         <input id="boardName" type="text" placeholder="你的名字／稱呼（可以唔填）" maxlength="40">
         <textarea id="boardText" placeholder="想問關於課程嘅問題，或者分享你嘅意見……" maxlength="500"></textarea>
@@ -358,7 +362,8 @@ footer{padding:30px 0 calc(30px + env(safe-area-inset-bottom,0px)); text-align:c
           <p>可以隨時電郵查詢，或者click右下角嘅客服小助手。</p>
         </div>
         <div class="btns">
-          <a class="btn btn-primary" href="mailto:sharonfeng52@gmail.com">✉️ 電郵查詢</a>
+          <a class="btn btn-primary" href="https://wa.me/85260517752?text=你好，我想查詢「同一張鈔票，不同世界」兒童財商課程" target="_blank" rel="noopener">💬 WhatsApp 報名查詢</a>
+          <a class="btn btn-ghost" href="mailto:sharonfeng52@gmail.com">✉️ 電郵查詢</a>
           <a class="btn btn-ghost" href="#faq">📋 睇多啲問題</a>
         </div>
       </div>
@@ -374,6 +379,7 @@ footer{padding:30px 0 calc(30px + env(safe-area-inset-bottom,0px)); text-align:c
   <div class="chat-body" id="chatBody">
     <div class="msg bot">你好呀！想了解「同一張鈔票，不同世界」課程，可以click下面問題，或者直接電郵我哋。</div>
   </div>
+  <a class="chat-wa" href="https://wa.me/85260517752?text=你好，我想查詢「同一張鈔票，不同世界」兒童財商課程" target="_blank" rel="noopener">💬 直接WhatsApp報名</a>
   <div class="quick" id="quickWrap"></div>
 </div>
 
@@ -381,7 +387,7 @@ footer{padding:30px 0 calc(30px + env(safe-area-inset-bottom,0px)); text-align:c
 const qa = [
   ["邊個年齡適合？", "課程專為高小學生設計，建議 11–12 歲，每堂 45 分鐘，16–20 人一班。"],
   ["一共幾多堂？", "全套共 6 堂：由認識金錢、儲蓄、消費、綠色理財，到第五堂綜合應用及第六堂全球視野協商。"],
-  ["點樣報名？", "歡迎電郵至 sharonfeng52@gmail.com，我哋會回覆你可報讀嘅班期同地點。"],
+  ["點樣報名？", "可以直接WhatsApp +852 6051 7752，或者電郵至 sharonfeng52@gmail.com，我哋會回覆你可報讀嘅班期同地點。"],
   ["會唔會要講屋企嘅真實收入？", "唔會，所有金額都係模擬情境，唔需要披露任何家庭財務私隱。"]
 ];
 const body = document.getElementById('chatBody');
@@ -399,74 +405,21 @@ qa.forEach(([q]) => {
   };
   quick.appendChild(b);
 });
-(async () => {
+(() => {
   const nameEl = document.getElementById('boardName');
   const textEl = document.getElementById('boardText');
   const statusEl = document.getElementById('boardStatus');
   const submitBtn = document.getElementById('boardSubmit');
   const listEl = document.getElementById('boardList');
-
-  const fmtTime = (ms) => {
-    if (!ms) return '';
-    const d = new Date(ms);
-    return d.toLocaleString('zh-HK', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
-  const render = (items) => {
-    if (!items.length) {
-      listEl.innerHTML = '<div class="board-empty">暫時未有留言，成為第一個提問嘅同學啦！</div>';
-      return;
-    }
-    listEl.innerHTML = items.map(d => {
-      const who = (d.name && d.name.trim()) ? d.name.trim() : '匿名同學';
-      const safeWho = who.replace(/</g, '&lt;');
-      const safeTxt = (d.text || '').replace(/</g, '&lt;');
-      return `<div class="board-item"><div class="who">${safeWho}<span class="when">${fmtTime(d.createdAt)}</span></div><div class="txt">${safeTxt}</div></div>`;
-    }).join('');
-  };
-
-  let db = null;
-  try { db = await claude.use('db'); } catch (e) { db = null; }
-
-  if (!db) {
-    statusEl.textContent = '請先登入 Claude 先可以留言';
-    submitBtn.disabled = true;
-    textEl.disabled = true; nameEl.disabled = true;
-    return;
-  }
-
-  listEl.style.display = 'none'; // hidden by default; only the instructor (owner) ever sees it
-  let amOwner = false;
-  try {
-    const user = await claude.use('user');
-    amOwner = user ? await user.isOwner() : false;
-  } catch (e) { amOwner = false; }
-
-  if (amOwner) {
-    try {
-      db.collection('messages').orderBy('createdAt', 'desc').limit(50).onSnapshot(
-        (snap) => { listEl.style.display = ''; render(snap.docs.map(d => d.data())); },
-        () => { /* read failed; keep hidden */ }
-      );
-    } catch (e) { /* keep hidden */ }
-  }
-
-  submitBtn.addEventListener('click', async () => {
+  listEl.style.display = 'none';
+  submitBtn.textContent = '經 WhatsApp 傳送';
+  submitBtn.addEventListener('click', () => {
     const text = textEl.value.trim();
     if (!text) { statusEl.textContent = '請先輸入留言內容'; return; }
-    submitBtn.disabled = true;
-    statusEl.textContent = '傳送緊……';
-    try {
-      await db.collection('messages').add({
-        name: nameEl.value.trim(),
-        text,
-        createdAt: Date.now(),
-      });
-      textEl.value = '';
-      statusEl.textContent = '多謝你嘅留言！';
-    } catch (e) {
-      statusEl.textContent = '傳送失敗，請稍後再試';
-    }
-    submitBtn.disabled = false;
+    const who = nameEl.value.trim() || '匿名同學';
+    const msg = '【課程留言】' + who + '：' + text;
+    window.open('https://wa.me/85260517752?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+    statusEl.textContent = '已開啟 WhatsApp，按「傳送」即可送出留言';
   });
 })();
 
